@@ -609,7 +609,16 @@ function renderStats() {
                     </td>
                     <td class="p-5 text-center text-slate-400 font-bold text-lg">${totalPreguntas}</td>
                     <td class="p-5 text-center text-green-400 font-bold text-lg">${aciertos}</td>
-                    <td class="p-5 text-center text-red-400 font-bold text-lg">${errores}</td>
+                    <td class="p-5 text-center">
+                        ${errores > 0 ? `
+                            <button onclick="openErrorModal(${i})" class="px-3 py-1.5 bg-red-900/20 text-red-400 hover:bg-red-900/40 border border-red-900/30 hover:border-red-600 rounded-xl font-bold text-lg transition-all btn-press inline-flex items-center gap-1 shadow-sm" title="Ver desglose de errores">
+                                <span>${errores}</span>
+                                <span class="text-xs opacity-75">🔍</span>
+                            </button>
+                        ` : `
+                            <span class="text-slate-500 font-bold text-lg">0</span>
+                        `}
+                    </td>
                     <td class="p-5">
                         <div class="flex items-center gap-4">
                             <div class="w-full bg-slate-700 rounded-full h-3 shadow-inner overflow-hidden">
@@ -631,6 +640,82 @@ function renderStats() {
         tbody.parentElement.parentElement.classList.remove('hidden');
         emptyState.classList.add('hidden');
     }
+}
+
+// ==========================================
+// CONTROL DEL MODAL DE ERRORES
+// ==========================================
+function openErrorModal(tableNum) {
+    const modal = document.getElementById('error-modal');
+    const card = document.getElementById('error-modal-card');
+    const title = document.getElementById('error-modal-title');
+    const list = document.getElementById('error-modal-list');
+    
+    title.innerText = `Errores registrados en la Tabla del ${tableNum}`;
+    list.innerHTML = '';
+    
+    const tableStats = stats[tableNum];
+    let errorsList = [];
+    
+    if (tableStats) {
+        for (let m in tableStats) {
+            const errs = tableStats[m].errores || 0;
+            if (errs > 0) {
+                errorsList.push({ multiplier: parseInt(m), count: errs });
+            }
+        }
+    }
+    
+    errorsList.sort((a, b) => b.count - a.count);
+    
+    if (errorsList.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-6 text-slate-500">
+                <span class="text-4xl block mb-2">🎉</span>
+                <p class="font-bold text-slate-300">¡No hay errores registrados!</p>
+                <p class="text-sm mt-1">Sigue así, vas excelente en esta tabla.</p>
+            </div>
+        `;
+    } else {
+        errorsList.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center py-3 bg-slate-900/40 px-4 rounded-xl border border-slate-700/50 shadow-sm';
+            div.innerHTML = `
+                <div class="font-bold text-lg text-slate-200">
+                    <span>${tableNum}</span>
+                    <span class="text-slate-500 mx-1">×</span>
+                    <span>${item.multiplier}</span>
+                    <span class="text-slate-500 mx-1">=</span>
+                    <span class="text-blue-400 font-display">${tableNum * item.multiplier}</span>
+                </div>
+                <div class="bg-red-950/50 border border-red-900/50 text-red-400 px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1.5 shadow-sm">
+                    <span>❌</span> ${item.count} ${item.count === 1 ? 'error' : 'errores'}
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+    
+    modal.classList.remove('hidden');
+    void modal.offsetWidth;
+    modal.classList.remove('opacity-0');
+    modal.classList.add('opacity-100');
+    card.classList.remove('scale-95');
+    card.classList.add('scale-100');
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('error-modal');
+    const card = document.getElementById('error-modal-card');
+    
+    modal.classList.remove('opacity-100');
+    modal.classList.add('opacity-0');
+    card.classList.remove('scale-100');
+    card.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
 }
 
 // ==========================================
