@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiQuiz - ¡Aprende a Multiplicar!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="text-slate-200 pb-20 bg-slate-900">
+
+    <!-- Header / Navigation -->
+    <header class="bg-slate-900/80 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <h1 class="text-2xl font-display text-blue-400 flex items-center gap-2">
+                <span class="text-3xl">✖️</span> MultiQuiz
+            </h1>
+            <nav class="flex gap-2 sm:gap-4 w-full sm:w-auto justify-center">
+                <button onclick="navTo('estudio')" id="nav-estudio" class="nav-btn px-4 py-2 rounded-xl font-bold text-sm sm:text-base transition-colors bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 shadow-sm border border-blue-800/50">Estudio</button>
+                <button onclick="navTo('quiz-config')" id="nav-quiz" class="nav-btn px-4 py-2 rounded-xl font-bold text-sm sm:text-base transition-colors text-slate-300 hover:bg-slate-800 shadow-sm border border-transparent">Quiz</button>
+                <button onclick="navTo('estadisticas')" id="nav-estadisticas" class="nav-btn px-4 py-2 rounded-xl font-bold text-sm sm:text-base transition-colors text-slate-300 hover:bg-slate-800 shadow-sm border border-transparent">Estadísticas</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-8">
+        
+        <!-- ==========================================
+             VISTA 1: ESTUDIO
+             ========================================== -->
+        <section id="view-estudio" class="view-section">
+            <div id="estudio-menu">
+                <h2 class="text-3xl sm:text-4xl font-display text-center mb-8 text-slate-200">Elige una tabla para estudiar</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6" id="tables-grid">
+                    <!-- Cards generadas dinámicamente -->
+                </div>
+            </div>
+            
+            <div id="estudio-detail" class="hidden fade-in">
+                <button onclick="showEstudioMenu()" class="mb-6 flex items-center gap-2 text-slate-400 font-bold hover:text-blue-400 transition-colors btn-press bg-slate-800 px-4 py-2 rounded-full shadow-sm border border-slate-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Volver a las tablas
+                </button>
+                <div class="bg-slate-800 rounded-3xl shadow-xl p-6 sm:p-8 max-w-md mx-auto border-t-8 border-slate-700" id="table-content-container">
+                    <!-- Detalle de tabla generado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VISTA 2: QUIZ (Configuración)
+             ========================================== -->
+        <section id="view-quiz-config" class="view-section hidden">
+            <h2 class="text-3xl sm:text-4xl font-display text-center mb-8 text-slate-200">¡Configura tu Reto!</h2>
+            <div class="bg-slate-800 rounded-3xl shadow-xl p-6 sm:p-8 border-t-8 border-blue-500 border border-slate-700">
+                
+                <!-- Selector de Tablas -->
+                <div class="mb-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                        <h3 class="text-xl font-bold text-slate-200 flex items-center gap-2">
+                            <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">1</span>
+                            Selecciona las tablas
+                        </h3>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="selectAllTables()" class="flex-1 sm:flex-none text-sm px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg font-bold text-slate-200 transition-colors btn-press">Todas</button>
+                            <button onclick="selectSmartTables()" class="flex-1 sm:flex-none text-sm px-4 py-2 bg-purple-900/40 text-purple-300 hover:bg-purple-800/60 border border-purple-700/50 rounded-lg font-bold flex items-center justify-center gap-1 transition-colors btn-press" title="Selecciona automáticamente las tablas en las que más fallas">
+                                ✨ Inteligente
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4" id="quiz-tables-checkboxes">
+                        <!-- Checkboxes generados dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Longitud del Quiz -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2">
+                        <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">2</span>
+                        Cantidad de preguntas
+                    </h3>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex-1 sm:flex-none relative cursor-pointer">
+                            <input type="radio" name="quiz-length" value="10" checked class="peer sr-only">
+                            <div class="px-6 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-center font-bold text-slate-400 peer-checked:text-blue-400 transition-all hover:bg-slate-700 text-lg">10</div>
+                        </label>
+                        <label class="flex-1 sm:flex-none relative cursor-pointer">
+                            <input type="radio" name="quiz-length" value="20" class="peer sr-only">
+                            <div class="px-6 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-center font-bold text-slate-400 peer-checked:text-blue-400 transition-all hover:bg-slate-700 text-lg">20</div>
+                        </label>
+                        <label class="flex-1 sm:flex-none relative cursor-pointer">
+                            <input type="radio" name="quiz-length" value="30" class="peer sr-only">
+                            <div class="px-6 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-center font-bold text-slate-400 peer-checked:text-blue-400 transition-all hover:bg-slate-700 text-lg">30</div>
+                        </label>
+                    </div>
+                </div>
+
+                <button id="btn-start-quiz" onclick="startQuiz()" disabled class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none text-white font-display text-2xl rounded-2xl transition-all btn-press shadow-lg shadow-green-900/50 transform hover:-translate-y-1">
+                    ¡Empezar a Jugar!
+                </button>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VISTA 2: QUIZ (Activo)
+             ========================================== -->
+        <section id="view-quiz-active" class="view-section hidden">
+            <div class="bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-10 max-w-2xl mx-auto relative overflow-hidden border border-slate-700">
+                <!-- Decoración de fondo -->
+                <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-yellow-900/20 rounded-full opacity-50 blur-2xl"></div>
+                <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-900/20 rounded-full opacity-50 blur-2xl"></div>
+
+                <div class="relative z-10">
+                    <div class="flex justify-between items-center mb-6">
+                        <button onclick="navTo('quiz-config')" class="p-2 text-slate-500 hover:bg-red-900/30 hover:text-red-400 rounded-full transition-colors" title="Abandonar Quiz">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                        <div class="bg-blue-900/40 text-blue-300 border border-blue-800/50 px-4 py-1 rounded-full font-bold text-sm" id="quiz-progress-text">Pregunta 1 de 10</div>
+                    </div>
+                    
+                    <div class="w-full bg-slate-700 rounded-full h-4 mb-10 overflow-hidden shadow-inner">
+                        <div id="quiz-progress-bar" class="bg-gradient-to-r from-blue-500 to-blue-400 h-4 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]" style="width: 10%"></div>
+                    </div>
+
+                    <div class="text-center mb-12">
+                        <h2 class="text-6xl sm:text-8xl font-display text-slate-100 drop-shadow-lg" id="quiz-question">7 × 8 = ?</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 sm:gap-6" id="quiz-options">
+                        <!-- Opciones generadas dinámicamente -->
+                    </div>
+
+                    <div id="quiz-feedback" class="mt-8 text-center text-2xl font-display h-10 opacity-0 transition-opacity duration-200 flex items-center justify-center">
+                        <!-- Feedback visual de acierto/error -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VISTA 2: QUIZ (Resultados)
+             ========================================== -->
+        <section id="view-quiz-results" class="view-section hidden fade-in">
+            <div class="bg-slate-800 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-2xl mx-auto text-center border-t-8 border-yellow-500 border border-slate-700 relative overflow-hidden">
+                <!-- Confeti simulado de fondo oscuro -->
+                <div class="absolute inset-0 pointer-events-none opacity-10" style="background-image: radial-gradient(#FCD34D 2px, transparent 2px), radial-gradient(#60A5FA 2px, transparent 2px); background-size: 30px 30px; background-position: 0 0, 15px 15px;"></div>
+                
+                <div class="relative z-10">
+                    <div id="result-icon" class="text-7xl mb-4 animate-bounce">🏆</div>
+                    <h2 id="result-message" class="text-4xl font-display mb-2 text-slate-100">¡Excelente!</h2>
+                    
+                    <div class="inline-block bg-blue-900/30 rounded-2xl px-8 py-4 mb-8 border border-blue-800/50">
+                        <p class="text-lg text-slate-400 font-bold mb-1">Tu puntuación</p>
+                        <p class="font-display text-4xl text-blue-400"><span id="result-score">8 / 10</span></p>
+                    </div>
+
+                    <div class="text-left bg-slate-700/50 rounded-2xl p-6 mb-8 border border-slate-600">
+                        <h3 class="font-bold text-slate-300 mb-4 text-lg flex items-center gap-2">
+                            <span>📊</span> Desglose por tabla
+                        </h3>
+                        <div id="result-breakdown" class="space-y-3">
+                            <!-- Desglose generado dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="startQuiz()" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-xl transition-all btn-press shadow-lg shadow-blue-900/50 border border-blue-500">
+                            🔄 Repetir quiz
+                        </button>
+                        <button onclick="navTo('quiz-config')" class="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-lg rounded-xl transition-all btn-press border border-slate-600">
+                            ⚙️ Nueva configuración
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VISTA 3: ESTADÍSTICAS
+             ========================================== -->
+        <section id="view-estadisticas" class="view-section hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                <h2 class="text-3xl sm:text-4xl font-display text-slate-200">Tus Estadísticas 📈</h2>
+                <button onclick="resetStats()" class="px-5 py-2 bg-red-900/30 text-red-400 hover:bg-red-800/50 hover:text-red-300 font-bold rounded-xl transition-colors text-sm flex items-center gap-2 border border-red-800/50 btn-press">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Reiniciar datos
+                </button>
+            </div>
+
+            <div class="bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-700">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-700/50 border-b border-slate-700">
+                                <th class="p-5 font-display text-slate-300 text-lg">Tabla</th>
+                                <th class="p-5 font-bold text-slate-400 text-center uppercase tracking-wider text-sm">Preguntas</th>
+                                <th class="p-5 font-bold text-green-400 text-center uppercase tracking-wider text-sm">Aciertos</th>
+                                <th class="p-5 font-bold text-red-400 text-center uppercase tracking-wider text-sm">Errores</th>
+                                <th class="p-5 font-bold text-slate-400 uppercase tracking-wider text-sm min-w-[250px]">Porcentaje de Acierto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-tbody" class="divide-y divide-slate-700">
+                            <!-- Filas generadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Mensaje cuando no hay datos -->
+                <div id="stats-empty" class="hidden p-12 text-center text-slate-500 bg-slate-800/50">
+                    <div class="text-6xl mb-4 opacity-50">🤷</div>
+                    <h3 class="text-2xl font-display text-slate-300 mb-2">Aún no has practicado</h3>
+                    <p class="text-lg mb-6">¡Ve al Quiz para poner a prueba tus conocimientos y llenar esta tabla!</p>
+                    <button onclick="navTo('quiz-config')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-bold hover:from-blue-500 hover:to-blue-400 transition-all btn-press shadow-md shadow-blue-900/50">
+                        Ir al Quiz ahora
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
