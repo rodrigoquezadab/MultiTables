@@ -95,7 +95,9 @@ function navTo(view) {
     }
 
     // Lógica específica al entrar a ciertas vistas
-    if (view === 'estadisticas') {
+    if (view === 'estudio') {
+        showEstudioMenu();
+    } else if (view === 'estadisticas') {
         renderStats();
     } else if (view === 'quiz-config') {
         updateStartButton();
