@@ -162,9 +162,64 @@ function resetStats() {
     if (confirm("¿Estás seguro de que quieres borrar todo tu progreso histórico? Esta acción no se puede deshacer.")) {
         stats = {};
         saveStats();
+        pairOrientationHistory = {};
+        try { localStorage.removeItem('multiplicar_orientations'); } catch (e) {}
         renderStats();
         updateErrorPoolInfo();
         updateStartButton();
+    }
+}
+
+// ==========================================
+// GESTIÓN DE ALTERNANCIA CONMUTATIVA (EVITAR REPETICIONES)
+// ==========================================
+function loadOrientationHistory() {
+    try {
+        const saved = localStorage.getItem('multiplicar_orientations');
+        return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+let pairOrientationHistory = loadOrientationHistory();
+
+function saveOrientationHistory() {
+    try {
+        localStorage.setItem('multiplicar_orientations', JSON.stringify(pairOrientationHistory));
+    } catch (e) {}
+}
+
+function getNextCommutativeFactors(a, b) {
+    const numA = parseInt(a, 10);
+    const numB = parseInt(b, 10);
+    if (numA === numB) {
+        return { f1: numA, f2: numB };
+    }
+
+    const min = Math.min(numA, numB);
+    const max = Math.max(numA, numB);
+    const key = `${min}_${max}`;
+
+    const last = pairOrientationHistory[key];
+    let nextOrder;
+
+    if (last === 'asc') {
+        nextOrder = 'desc';
+    } else if (last === 'desc') {
+        nextOrder = 'asc';
+    } else {
+        // Primera vez que se genera esta pareja: orden aleatorio
+        nextOrder = Math.random() > 0.5 ? 'asc' : 'desc';
+    }
+
+    pairOrientationHistory[key] = nextOrder;
+    saveOrientationHistory();
+
+    if (nextOrder === 'asc') {
+        return { f1: min, f2: max };
+    } else {
+        return { f1: max, f2: min };
     }
 }
 
@@ -557,12 +612,9 @@ function generateQuestions(tables, count, onlyErrors = false) {
             const j = Math.floor(Math.random() * (i + 1));
             [questions[i], questions[j]] = [questions[j], questions[i]];
         }
-
-        return questions;
-    }
-
-    // MODO NORMAL (Ponderado con probabilidad de repetición de fallos)
-    let pool = [];
+    } else {
+        // MODO NORMAL (Ponderado con probabilidad de repetición de fallos)
+        let pool = [];
     tables.forEach(t => {
         if (t === 1 || t === 10) return; // Por seguridad, omitir tabla del 1 y del 10
         
@@ -597,12 +649,20 @@ function generateQuestions(tables, count, onlyErrors = false) {
         }
 
         const correctResult = selectedQuestion.a * selectedQuestion.b;
-        questions.push({ 
-            a: selectedQuestion.a, 
-            b: selectedQuestion.b, 
-            options: generateOptions(correctResult) 
-        });
+            questions.push({ 
+                a: selectedQuestion.a, 
+                b: selectedQuestion.b, 
+                options: generateOptions(correctResult) 
+            });
+        }
     }
+
+    // Asignar alternancia de orden para que nunca se repita la misma forma consecutiva
+    questions.forEach(q => {
+        const factors = getNextCommutativeFactors(q.a, q.b);
+        q.f1 = factors.f1;
+        q.f2 = factors.f2;
+    });
 
     return questions;
 }
@@ -648,7 +708,7 @@ function renderQuestion() {
     document.getElementById('quiz-progress-text').innerText = `Pregunta ${quizState.currentIndex + 1} de ${quizState.length}`;
     document.getElementById('quiz-progress-bar').style.width = `${progress}%`;
     
-    const displayStr = Math.random() > 0.5 ? `${q.a} × ${q.b}` : `${q.b} × ${q.a}`;
+    const displayStr = `${q.f1 || q.a} × ${q.f2 || q.b}`;
     
     const questionEl = document.getElementById('quiz-question');
     questionEl.innerText = `${displayStr} = ?`;
@@ -753,7 +813,7 @@ function bookmarkCurrentQuestion() {
 
         // Feedback informativo con la solución exacta
         if (feedback) {
-            feedback.innerHTML = `<span class="text-amber-300 bg-amber-950/60 border border-amber-800/60 px-3 sm:px-4 py-1.5 rounded-full text-sm sm:text-lg">📌 Guardada para reforzar (${tableNum} × ${multiplierNum} = ${correctAnswer})</span>`;
+            feedback.innerHTML = `<span class="text-amber-300 bg-amber-950/60 border border-amber-800/60 px-3 sm:px-4 py-1.5 rounded-full text-sm sm:text-lg">📌 Guardada para reforzar (${q.f1 || tableNum} × ${q.f2 || multiplierNum} = ${correctAnswer})</span>`;
             feedback.style.opacity = '1';
         }
     } catch (err) {
@@ -816,7 +876,7 @@ function processAnswer(selectedAnswer, btnElement = null) {
 
     if (isCorrect) {
         quizState.score++;
-        quizState.tableBreakdown[q.a].c++;
+        quizState.tableBreakdown[tableNum].c++;
 
         // Bono de velocidad: tiempo base objetivo de 5 segundos
         // Si se responde en menos de 5s, se gana bonificación proporcional (hasta 600 pts extra)
@@ -863,7 +923,7 @@ function processAnswer(selectedAnswer, btnElement = null) {
             box.className = 'w-full max-w-xs bg-red-950/50 border-2 border-red-500 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-red-300 flex items-center justify-center min-h-[72px] shadow-lg tracking-wider transition-all scale-95';
         }
 
-        feedback.innerHTML = `<span class="text-red-400 bg-red-900/30 border border-red-800/50 px-4 py-1.5 rounded-full text-lg sm:text-xl">✗ Era ${correctAnswer}</span>`;
+        feedback.innerHTML = `<span class="text-red-400 bg-red-900/30 border border-red-800/50 px-4 py-1.5 rounded-full text-lg sm:text-xl">✗ ${q.f1 || tableNum} × ${q.f2 || multiplierNum} = ${correctAnswer}</span>`;
         feedback.style.opacity = '1';
 
         setTimeout(() => {

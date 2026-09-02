@@ -168,7 +168,7 @@ let quizState = {
   length: 10,            // 10, 20 o 30
   mode: 'input',         // 'input' (Entrada directa) o 'options' (4 alternativas)
   pool: 'all',           // 'all' (Todas las combinaciones) o 'errors' (Solo fallos frecuentes)
-  questions: [],         // Array de preguntas [{ a, b, options: [...] }]
+  questions: [],         // Array de preguntas [{ a, b, f1, f2, options: [...] }]
   currentIndex: 0,       // Pregunta actual (0-indexed)
   score: 0,              // Cantidad de aciertos acumulados
   errorsCount: 0,        // Cantidad de fallos cometidos
@@ -177,7 +177,6 @@ let quizState = {
   waiting: false,        // Bloqueo temporal entre preguntas
   currentInputValue: '', // Valor ingresado en el input numérico
   startTime: null,       // Timestamp de inicio del quiz
-  endTime: null,         // Timestamp de término del quiz
   timerInterval: null,   // Identificador del temporizador activo
   questionStartTime: null, // Timestamp al cargar la pregunta actual
   questionTimes: [],     // Tiempos individuales en segundos por pregunta
@@ -185,7 +184,13 @@ let quizState = {
 };
 ```
 
-### 5.3. Paleta Cromática (`TABLE_COLORS`)
+### 5.3. Historial de Alternancia Conmutativa (`multiplicar_orientations`)
+Para evitar que una misma operación se repita de forma idéntica (ej. `7 × 6` seguido de `7 × 6`), el sistema mantiene un registro persistente del último orden mostrado para cada par no idéntico $\{a, b\}$ con clave `min_max`:
+- Si la última vez se mostró de forma ascendente (`6 × 7`), la siguiente aparición se invierte a descendente (`7 × 6`).
+- Si la última vez fue descendente (`7 × 6`), la siguiente aparición se invierte a ascendente (`6 × 7`).
+- La alternancia se aplica en la secuencia final de cada quiz y persiste entre partidas en `localStorage.multiplicar_orientations`.
+
+### 5.4. Paleta Cromática (`TABLE_COLORS`)
 Cada una de las 12 tablas tiene asignado un esquema de color predeterminado para tarjetas, bordes, badges y acentos:
 
 | Tabla | Tonalidad Tailwind | Color Hex |
