@@ -59,12 +59,17 @@ body {
     50% { opacity: 0; }
 }
 
-/* Pulsación rápida para el teclado numérico en pantalla */
+/* Pulsación rápida y soporte táctil móvil */
+button, input, select, label, .numpad-btn, .quiz-option-btn, .btn-press {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
 .numpad-btn {
     user-select: none;
     -webkit-user-select: none;
-    touch-action: manipulation;
 }
 .numpad-btn:active {
     transform: scale(0.92);
 }
+

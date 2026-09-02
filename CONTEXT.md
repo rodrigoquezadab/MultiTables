@@ -91,6 +91,9 @@ La navegación funciona como un enrutador SPA manual en el cliente. La función 
    - **Feedback instantáneo:**
      - **Acierto:** Resaltado en verde, mensaje informativo con el puntaje obtenido y tiempo de resolución (ej. `✓ ¡Correcto! +1,450 pts (1.2s)`), avance en 750ms.
      - **Fallo:** Resaltado en rojo, feedback indicando el resultado correcto exacto (`✗ Era 56`), penalización de puntuación y avance en 1250ms.
+   - **Botón "📌 Guardar para reforzar y pasar" (Atajo: tecla `R`):**
+     - Permite al usuario archivar voluntariamente la pregunta actual para entrenamiento posterior sin trabarse ni adivinar por azar.
+     - Registra la operación en el banco de fallos (`stats[a][b].errores++`), muestra la solución en un badge ámbar durante 850ms y avanza fluidamente a la siguiente pregunta.
 
 4. **Resultados del Quiz (`view-quiz-results`):**
    - Emblema e ícono dinámico según precisión y velocidad:

@@ -97,7 +97,7 @@ function navTo(view) {
 
     // Actualizar estilos del menú superior
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.className = 'nav-btn px-4 py-2 rounded-xl font-bold text-sm sm:text-base transition-colors text-slate-300 hover:bg-slate-800 shadow-sm border border-transparent';
+        btn.className = 'nav-btn flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-base transition-colors text-slate-300 hover:bg-slate-800 shadow-sm border border-transparent text-center';
     });
 
     // Determinar qué botón del menú activar
@@ -108,7 +108,7 @@ function navTo(view) {
 
     if (activeNavId) {
         const activeBtn = document.getElementById(activeNavId);
-        activeBtn.className = 'nav-btn px-4 py-2 rounded-xl font-bold text-sm sm:text-base transition-colors bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 shadow-sm border border-blue-800/50';
+        activeBtn.className = 'nav-btn flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-base transition-colors bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 shadow-sm border border-blue-800/50 text-center';
     }
 
     // Lógica específica al entrar a ciertas vistas
@@ -666,7 +666,7 @@ function renderQuestion() {
         
         q.options.forEach((opt) => {
             const btn = document.createElement('button');
-            btn.className = 'quiz-option-btn p-5 sm:p-8 text-4xl sm:text-5xl font-display bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl border-4 border-slate-700 hover:border-blue-500/50 transition-all btn-press shadow-md flex items-center justify-center';
+            btn.className = 'quiz-option-btn min-h-[64px] sm:min-h-[96px] p-3.5 sm:p-7 text-3xl sm:text-5xl font-display bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl border-2 sm:border-4 border-slate-700 hover:border-blue-500/50 transition-all btn-press shadow-md flex items-center justify-center';
             btn.innerText = opt;
             btn.onclick = () => handleAnswer(opt, btn);
             optionsContainer.appendChild(btn);
@@ -677,13 +677,74 @@ function renderQuestion() {
         updateInputDisplay();
 
         const box = document.getElementById('quiz-input-display-box');
-        box.className = 'w-full max-w-xs bg-slate-900/90 border-2 border-blue-500/60 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-blue-300 flex items-center justify-center min-h-[72px] shadow-inner tracking-wider transition-colors';
+        box.className = 'w-full max-w-xs bg-slate-900/90 border-2 border-blue-500/60 rounded-2xl py-2.5 sm:py-3 px-4 sm:px-6 text-center text-3xl sm:text-5xl font-display text-blue-300 flex items-center justify-center min-h-[64px] sm:min-h-[72px] shadow-inner tracking-wider transition-colors';
 
         const submitBtn = document.getElementById('btn-submit-answer');
         if (submitBtn) submitBtn.removeAttribute('disabled');
     }
 
+    const bookmarkBtn = document.getElementById('btn-bookmark-question');
+    if (bookmarkBtn) {
+        bookmarkBtn.removeAttribute('disabled');
+        bookmarkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
     quizState.questionStartTime = performance.now();
+}
+
+function bookmarkCurrentQuestion() {
+    if (quizState.waiting || !quizState.isActive) return;
+    quizState.waiting = true;
+
+    const q = quizState.questions[quizState.currentIndex];
+    const correctAnswer = q.a * q.b;
+    const feedback = document.getElementById('quiz-feedback');
+
+    // Medir tiempo empleado
+    const now = performance.now();
+    const qTime = Math.max(0.1, (now - (quizState.questionStartTime || now)) / 1000);
+    quizState.questionTimes.push(qTime);
+
+    // Registrar en las estadísticas como fallo/refuerzo
+    updateStat(q.a, q.b, false);
+    quizState.errorsCount++;
+    quizState.tableBreakdown[q.a].q++;
+
+    // Deshabilitar controles de respuesta temporalmente
+    if (quizState.mode === 'options') {
+        const allBtns = document.querySelectorAll('.quiz-option-btn');
+        allBtns.forEach(b => {
+            b.disabled = true;
+            b.classList.add('cursor-default', 'opacity-60');
+            if (parseInt(b.innerText) === correctAnswer) {
+                b.classList.remove('bg-slate-800', 'border-slate-700', 'opacity-60');
+                b.classList.add('bg-amber-600', 'border-amber-500', 'text-white', 'opacity-100');
+            }
+        });
+    } else {
+        const submitBtn = document.getElementById('btn-submit-answer');
+        if (submitBtn) submitBtn.setAttribute('disabled', 'true');
+        const box = document.getElementById('quiz-input-display-box');
+        if (box) {
+            box.className = 'w-full max-w-xs bg-amber-950/50 border-2 border-amber-500 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-amber-300 flex items-center justify-center min-h-[72px] shadow-lg tracking-wider transition-all';
+        }
+    }
+
+    const bookmarkBtn = document.getElementById('btn-bookmark-question');
+    if (bookmarkBtn) {
+        bookmarkBtn.setAttribute('disabled', 'true');
+        bookmarkBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // Feedback informativo con la solución exacta
+    feedback.innerHTML = `<span class="text-amber-300 bg-amber-950/60 border border-amber-800/60 px-4 py-1.5 rounded-full text-base sm:text-lg">📌 Guardada para reforzar (${q.a} × ${q.b} = ${correctAnswer})</span>`;
+    feedback.style.opacity = '1';
+
+    setTimeout(() => {
+        quizState.currentIndex++;
+        quizState.waiting = false;
+        renderQuestion();
+    }, 850);
 }
 
 function handleAnswer(selectedAnswer, btnElement) {
@@ -912,30 +973,30 @@ function renderStats() {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-700/30 transition-colors group';
                 tr.innerHTML = `
-                    <td class="p-5">
-                        <div class="flex items-center gap-3">
-                            <span class="inline-block w-10 h-10 rounded-full ${color.bg} ${color.text} border border-slate-700/50 flex items-center justify-center font-display text-xl shadow-sm group-hover:scale-110 transition-transform">${i}</span>
-                            <span class="font-bold text-slate-300 hidden sm:inline">Tabla del ${i}</span>
+                    <td class="p-3 sm:p-5">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <span class="inline-block w-8 h-8 sm:w-10 sm:h-10 rounded-full ${color.bg} ${color.text} border border-slate-700/50 flex items-center justify-center font-display text-base sm:text-xl shadow-sm group-hover:scale-110 transition-transform">${i}</span>
+                            <span class="font-bold text-slate-300 text-xs sm:text-base hidden sm:inline">Tabla del ${i}</span>
                         </div>
                     </td>
-                    <td class="p-5 text-center text-slate-400 font-bold text-lg">${totalPreguntas}</td>
-                    <td class="p-5 text-center text-green-400 font-bold text-lg">${aciertos}</td>
-                    <td class="p-5 text-center">
+                    <td class="p-3 sm:p-5 text-center text-slate-400 font-bold text-sm sm:text-lg">${totalPreguntas}</td>
+                    <td class="p-3 sm:p-5 text-center text-green-400 font-bold text-sm sm:text-lg">${aciertos}</td>
+                    <td class="p-3 sm:p-5 text-center">
                         ${errores > 0 ? `
-                            <button onclick="openErrorModal(${i})" class="px-3 py-1.5 bg-red-900/20 text-red-400 hover:bg-red-900/40 border border-red-900/30 hover:border-red-600 rounded-xl font-bold text-lg transition-all btn-press inline-flex items-center gap-1 shadow-sm" title="Ver desglose de errores">
+                            <button onclick="openErrorModal(${i})" class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-red-900/20 text-red-400 hover:bg-red-900/40 border border-red-900/30 hover:border-red-600 rounded-xl font-bold text-sm sm:text-lg transition-all btn-press inline-flex items-center gap-1 shadow-sm" title="Ver desglose de errores">
                                 <span>${errores}</span>
                                 <span class="text-xs opacity-75">🔍</span>
                             </button>
                         ` : `
-                            <span class="text-slate-500 font-bold text-lg">0</span>
+                            <span class="text-slate-500 font-bold text-sm sm:text-lg">0</span>
                         `}
                     </td>
-                    <td class="p-5">
-                        <div class="flex items-center gap-4">
-                            <div class="w-full bg-slate-700 rounded-full h-3 shadow-inner overflow-hidden">
-                                <div class="${barColor} h-3 rounded-full transition-all duration-1000" style="width: ${pct}%"></div>
+                    <td class="p-3 sm:p-5">
+                        <div class="flex items-center gap-2 sm:gap-4">
+                            <div class="w-full bg-slate-700 rounded-full h-2.5 sm:h-3 shadow-inner overflow-hidden">
+                                <div class="${barColor} h-full rounded-full transition-all duration-1000" style="width: ${pct}%"></div>
                             </div>
-                            <span class="font-bold text-slate-300 w-12 text-right">${pct}%</span>
+                            <span class="font-bold text-slate-300 text-xs sm:text-base w-10 sm:w-12 text-right">${pct}%</span>
                         </div>
                     </td>
                 `;
@@ -1094,7 +1155,16 @@ function startReviewQuizFromModal() {
 // CAPTURA DE TECLADO FÍSICO (DESKTOP & TABLET)
 // ==========================================
 window.addEventListener('keydown', (e) => {
-    if (!quizState.isActive || quizState.mode !== 'input' || currentView !== 'quiz-active') return;
+    if (!quizState.isActive || currentView !== 'quiz-active') return;
+
+    // Tecla R para archivar/guardar para reforzar y pasar a la siguiente pregunta
+    if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        bookmarkCurrentQuestion();
+        return;
+    }
+
+    if (quizState.mode !== 'input') return;
 
     if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();

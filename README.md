@@ -5,6 +5,8 @@
 ## ✨ Características
 
 - **📖 Modo Estudio:** Explora y repasa individualmente las tablas de multiplicar del 1 al 12.
+- **🎮 Reto Quiz Personalizable:**
+  - **📌 Guardar para Reforzar y Pasar:** ¿Dudas en una pregunta? Presiona el botón o la tecla `R` para archivarla en tu lista de repaso, ver la solución exacta y pasar inmediatamente a la siguiente.
   - **🎯 Modo Repasar Fallos (Foco en Errores):** Juega exclusivamente con las multiplicaciones que más has fallado, ya sea para una tabla específica, varias tablas o abarcando todo tu historial.
   - **Nuevo Modo de Entrada Directa:** Escribe la respuesta directamente con el teclado físico o con el teclado numérico en pantalla para evitar adivinar por descarte.
   - **Modo Clásico de Opciones:** Elige entre 4 alternativas generadas dinámicamente con distractores plausibles.
