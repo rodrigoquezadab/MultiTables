@@ -272,15 +272,16 @@ function getErrorsForTables(tables) {
     if (!tables || tables.length === 0) return list;
 
     tables.forEach(t => {
-        if (stats[t]) {
-            for (let m in stats[t]) {
-                const errs = stats[t][m].errores || 0;
+        const tableNum = parseInt(t, 10);
+        if (stats[tableNum]) {
+            for (let m in stats[tableNum]) {
+                const errs = stats[tableNum][m].errores || 0;
                 if (errs > 0) {
                     list.push({
-                        a: t,
+                        a: tableNum,
                         b: parseInt(m, 10),
                         errors: errs,
-                        correct: stats[t][m].aciertos || 0
+                        correct: stats[tableNum][m].aciertos || 0
                     });
                 }
             }
@@ -696,55 +697,74 @@ function bookmarkCurrentQuestion() {
     if (quizState.waiting || !quizState.isActive) return;
     quizState.waiting = true;
 
-    const q = quizState.questions[quizState.currentIndex];
-    const correctAnswer = q.a * q.b;
-    const feedback = document.getElementById('quiz-feedback');
-
-    // Medir tiempo empleado
-    const now = performance.now();
-    const qTime = Math.max(0.1, (now - (quizState.questionStartTime || now)) / 1000);
-    quizState.questionTimes.push(qTime);
-
-    // Registrar en las estadísticas como fallo/refuerzo
-    updateStat(q.a, q.b, false);
-    quizState.errorsCount++;
-    quizState.tableBreakdown[q.a].q++;
-
-    // Deshabilitar controles de respuesta temporalmente
-    if (quizState.mode === 'options') {
-        const allBtns = document.querySelectorAll('.quiz-option-btn');
-        allBtns.forEach(b => {
-            b.disabled = true;
-            b.classList.add('cursor-default', 'opacity-60');
-            if (parseInt(b.innerText) === correctAnswer) {
-                b.classList.remove('bg-slate-800', 'border-slate-700', 'opacity-60');
-                b.classList.add('bg-amber-600', 'border-amber-500', 'text-white', 'opacity-100');
-            }
-        });
-    } else {
-        const submitBtn = document.getElementById('btn-submit-answer');
-        if (submitBtn) submitBtn.setAttribute('disabled', 'true');
-        const box = document.getElementById('quiz-input-display-box');
-        if (box) {
-            box.className = 'w-full max-w-xs bg-amber-950/50 border-2 border-amber-500 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-amber-300 flex items-center justify-center min-h-[72px] shadow-lg tracking-wider transition-all';
+    try {
+        const q = quizState.questions[quizState.currentIndex];
+        if (!q) {
+            quizState.waiting = false;
+            finishQuiz();
+            return;
         }
+
+        const tableNum = parseInt(q.a, 10);
+        const multiplierNum = parseInt(q.b, 10);
+        const correctAnswer = tableNum * multiplierNum;
+        const feedback = document.getElementById('quiz-feedback');
+
+        // Medir tiempo empleado
+        const now = performance.now();
+        const qTime = Math.max(0.1, (now - (quizState.questionStartTime || now)) / 1000);
+        quizState.questionTimes.push(qTime);
+
+        // Registrar en las estadísticas como fallo/refuerzo
+        updateStat(tableNum, multiplierNum, false);
+        quizState.errorsCount++;
+
+        if (!quizState.tableBreakdown) quizState.tableBreakdown = {};
+        if (!quizState.tableBreakdown[tableNum]) {
+            quizState.tableBreakdown[tableNum] = { q: 0, c: 0 };
+        }
+        quizState.tableBreakdown[tableNum].q++;
+
+        // Deshabilitar controles de respuesta temporalmente
+        if (quizState.mode === 'options') {
+            const allBtns = document.querySelectorAll('.quiz-option-btn');
+            allBtns.forEach(b => {
+                b.disabled = true;
+                b.classList.add('cursor-default', 'opacity-60');
+                if (parseInt(b.innerText, 10) === correctAnswer) {
+                    b.classList.remove('bg-slate-800', 'border-slate-700', 'opacity-60');
+                    b.classList.add('bg-amber-600', 'border-amber-500', 'text-white', 'opacity-100');
+                }
+            });
+        } else {
+            const submitBtn = document.getElementById('btn-submit-answer');
+            if (submitBtn) submitBtn.setAttribute('disabled', 'true');
+            const box = document.getElementById('quiz-input-display-box');
+            if (box) {
+                box.className = 'w-full max-w-xs bg-amber-950/50 border-2 border-amber-500 rounded-2xl py-2.5 sm:py-3 px-4 sm:px-6 text-center text-3xl sm:text-5xl font-display text-amber-300 flex items-center justify-center min-h-[64px] sm:min-h-[72px] shadow-lg tracking-wider transition-all';
+            }
+        }
+
+        const bookmarkBtn = document.getElementById('btn-bookmark-question');
+        if (bookmarkBtn) {
+            bookmarkBtn.setAttribute('disabled', 'true');
+            bookmarkBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Feedback informativo con la solución exacta
+        if (feedback) {
+            feedback.innerHTML = `<span class="text-amber-300 bg-amber-950/60 border border-amber-800/60 px-3 sm:px-4 py-1.5 rounded-full text-sm sm:text-lg">📌 Guardada para reforzar (${tableNum} × ${multiplierNum} = ${correctAnswer})</span>`;
+            feedback.style.opacity = '1';
+        }
+    } catch (err) {
+        console.error("Error al archivar pregunta:", err);
+    } finally {
+        setTimeout(() => {
+            quizState.currentIndex++;
+            quizState.waiting = false;
+            renderQuestion();
+        }, 850);
     }
-
-    const bookmarkBtn = document.getElementById('btn-bookmark-question');
-    if (bookmarkBtn) {
-        bookmarkBtn.setAttribute('disabled', 'true');
-        bookmarkBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    }
-
-    // Feedback informativo con la solución exacta
-    feedback.innerHTML = `<span class="text-amber-300 bg-amber-950/60 border border-amber-800/60 px-4 py-1.5 rounded-full text-base sm:text-lg">📌 Guardada para reforzar (${q.a} × ${q.b} = ${correctAnswer})</span>`;
-    feedback.style.opacity = '1';
-
-    setTimeout(() => {
-        quizState.currentIndex++;
-        quizState.waiting = false;
-        renderQuestion();
-    }, 850);
 }
 
 function handleAnswer(selectedAnswer, btnElement) {
@@ -756,7 +776,15 @@ function processAnswer(selectedAnswer, btnElement = null) {
     quizState.waiting = true;
 
     const q = quizState.questions[quizState.currentIndex];
-    const correctAnswer = q.a * q.b;
+    if (!q) {
+        quizState.waiting = false;
+        finishQuiz();
+        return;
+    }
+
+    const tableNum = parseInt(q.a, 10);
+    const multiplierNum = parseInt(q.b, 10);
+    const correctAnswer = tableNum * multiplierNum;
     const isCorrect = (selectedAnswer === correctAnswer);
     const feedback = document.getElementById('quiz-feedback');
     
@@ -765,8 +793,14 @@ function processAnswer(selectedAnswer, btnElement = null) {
     const qTime = Math.max(0.1, (now - (quizState.questionStartTime || now)) / 1000);
     quizState.questionTimes.push(qTime);
 
-    updateStat(q.a, q.b, isCorrect);
-    quizState.tableBreakdown[q.a].q++;
+    updateStat(tableNum, multiplierNum, isCorrect);
+
+    if (!quizState.tableBreakdown) quizState.tableBreakdown = {};
+    if (!quizState.tableBreakdown[tableNum]) {
+        quizState.tableBreakdown[tableNum] = { q: 0, c: 0 };
+    }
+    quizState.tableBreakdown[tableNum].q++;
+
 
     if (quizState.mode === 'options') {
         const allBtns = document.querySelectorAll('.quiz-option-btn');
