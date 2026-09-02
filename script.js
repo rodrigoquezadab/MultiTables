@@ -588,6 +588,38 @@ function startQuiz() {
     renderQuestion();
 }
 
+function preventConsecutiveDuplicates(arr) {
+    if (!arr || arr.length <= 1) return;
+
+    for (let i = 1; i < arr.length; i++) {
+        const prevKey = Math.min(arr[i-1].a, arr[i-1].b) + '_' + Math.max(arr[i-1].a, arr[i-1].b);
+        const currKey = Math.min(arr[i].a, arr[i].b) + '_' + Math.max(arr[i].a, arr[i].b);
+
+        if (prevKey === currKey) {
+            // Buscar un elemento posterior para intercambiar y separar las operaciones idénticas
+            let swapped = false;
+            for (let j = i + 1; j < arr.length; j++) {
+                const swapKey = Math.min(arr[j].a, arr[j].b) + '_' + Math.max(arr[j].a, arr[j].b);
+                if (swapKey !== prevKey) {
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                    swapped = true;
+                    break;
+                }
+            }
+            if (!swapped) {
+                // Si no hay candidatos hacia adelante, probar con elementos anteriores no adyacentes
+                for (let j = 0; j < i - 1; j++) {
+                    const swapKey = Math.min(arr[j].a, arr[j].b) + '_' + Math.max(arr[j].a, arr[j].b);
+                    if (swapKey !== currKey) {
+                        [arr[i], arr[j]] = [arr[j], arr[i]];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
 function generateQuestions(tables, count, onlyErrors = false) {
     let questions = [];
 
@@ -597,7 +629,6 @@ function generateQuestions(tables, count, onlyErrors = false) {
         if (errorList.length === 0) return [];
 
         for (let i = 0; i < count; i++) {
-            // Ciclar las combinaciones con fallos (las de mayor error salen primero)
             const item = errorList[i % errorList.length];
             const correctResult = item.a * item.b;
             questions.push({
@@ -607,61 +638,99 @@ function generateQuestions(tables, count, onlyErrors = false) {
             });
         }
 
-        // Mezclar aleatoriamente las preguntas generadas para dinamismo
-        for (let i = questions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [questions[i], questions[j]] = [questions[j], questions[i]];
+        // Mezclar aleatoriamente si hay múltiples tipos de errores
+        if (errorList.length > 1) {
+            for (let i = questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [questions[i], questions[j]] = [questions[j], questions[i]];
+            }
+            preventConsecutiveDuplicates(questions);
         }
     } else {
-        // MODO NORMAL (Ponderado con probabilidad de repetición de fallos)
+        // MODO NORMAL: Baraja ponderada sin reemplazo continuo
         let pool = [];
-    tables.forEach(t => {
-        if (t === 1 || t === 10) return; // Por seguridad, omitir tabla del 1 y del 10
-        
-        for (let multiplier = 1; multiplier <= 12; multiplier++) {
-            if (multiplier === 1 || multiplier === 10) continue; // Omitir multiplicación por 1 y por 10
+        tables.forEach(t => {
+            if (t === 1 || t === 10) return; // Por seguridad, omitir tabla del 1 y del 10
             
-            let weight = 1; 
-            if (stats[t] && stats[t][multiplier]) {
-                const s = stats[t][multiplier];
-                const total = s.aciertos + s.errores;
-                if (total > 0) {
-                    weight = 1 + (s.errores / (total + 1)) * 3; 
+            for (let multiplier = 1; multiplier <= 12; multiplier++) {
+                if (multiplier === 1 || multiplier === 10) continue; // Omitir multiplicación por 1 y por 10
+                
+                let weight = 1; 
+                if (stats[t] && stats[t][multiplier]) {
+                    const s = stats[t][multiplier];
+                    const total = s.aciertos + s.errores;
+                    if (total > 0) {
+                        weight = 1 + (s.errores / (total + 1)) * 3; 
+                    }
+                }
+                const copies = Math.max(1, Math.round(weight));
+                for (let k = 0; k < copies; k++) {
+                    pool.push({ a: t, b: multiplier });
                 }
             }
-            pool.push({ a: t, b: multiplier, weight: weight });
-        }
-    });
+        });
 
-    for (let i = 0; i < count; i++) {
-        let totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
-        if (totalWeight === 0) continue; // Evitar errores si el pool está vacío
-        let random = Math.random() * totalWeight;
-        let currentWeight = 0;
-        let selectedQuestion = null;
-        
-        for (let j = 0; j < pool.length; j++) {
-            currentWeight += pool[j].weight;
-            if (random <= currentWeight) {
-                selectedQuestion = pool[j];
-                break;
+        if (pool.length === 0) return [];
+
+        // Barajar pool inicial
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        let lastPairKey = null;
+        let poolIndex = 0;
+
+        for (let i = 0; i < count; i++) {
+            let candidate = null;
+            for (let attempt = 0; attempt < pool.length; attempt++) {
+                const idx = (poolIndex + attempt) % pool.length;
+                const item = pool[idx];
+                const pairKey = Math.min(item.a, item.b) + '_' + Math.max(item.a, item.b);
+
+                if (pairKey !== lastPairKey || pool.length === 1) {
+                    candidate = item;
+                    poolIndex = (idx + 1) % pool.length;
+                    break;
+                }
             }
-        }
 
-        const correctResult = selectedQuestion.a * selectedQuestion.b;
+            if (!candidate) {
+                candidate = pool[poolIndex % pool.length];
+                poolIndex = (poolIndex + 1) % pool.length;
+            }
+
+            lastPairKey = Math.min(candidate.a, candidate.b) + '_' + Math.max(candidate.a, candidate.b);
+            const correctResult = candidate.a * candidate.b;
             questions.push({ 
-                a: selectedQuestion.a, 
-                b: selectedQuestion.b, 
+                a: candidate.a, 
+                b: candidate.b, 
                 options: generateOptions(correctResult) 
             });
         }
+
+        preventConsecutiveDuplicates(questions);
     }
 
-    // Asignar alternancia de orden para que nunca se repita la misma forma consecutiva
-    questions.forEach(q => {
+    // Asignar alternancia estricta de orden en la secuencia definitiva
+    questions.forEach((q, idx) => {
         const factors = getNextCommutativeFactors(q.a, q.b);
         q.f1 = factors.f1;
         q.f2 = factors.f2;
+
+        // Si la pregunta anterior era la misma pareja, forzar que la orientación sea la opuesta
+        if (idx > 0) {
+            const prevQ = questions[idx - 1];
+            const isSamePair = (Math.min(q.a, q.b) === Math.min(prevQ.a, prevQ.b)) && 
+                               (Math.max(q.a, q.b) === Math.max(prevQ.a, prevQ.b));
+            
+            if (isSamePair && q.a !== q.b) {
+                if (q.f1 === prevQ.f1 && q.f2 === prevQ.f2) {
+                    q.f1 = prevQ.f2;
+                    q.f2 = prevQ.f1;
+                }
+            }
+        }
     });
 
     return questions;
@@ -703,6 +772,24 @@ function renderQuestion() {
     }
 
     const q = quizState.questions[quizState.currentIndex];
+
+    // GUARDA RUNTIME: Si por cualquier motivo la pregunta anterior es la misma pareja,
+    // garantizar matemáticamente que sus factores no se lean en el mismo orden
+    if (quizState.currentIndex > 0) {
+        const prevQ = quizState.questions[quizState.currentIndex - 1];
+        const isSamePair = (Math.min(q.a, q.b) === Math.min(prevQ.a, prevQ.b)) && 
+                           (Math.max(q.a, q.b) === Math.max(prevQ.a, prevQ.b));
+        
+        if (isSamePair && q.a !== q.b) {
+            const prevF1 = prevQ.f1 || prevQ.a;
+            const prevF2 = prevQ.f2 || prevQ.b;
+            if ((q.f1 || q.a) === prevF1 && (q.f2 || q.b) === prevF2) {
+                q.f1 = prevF2;
+                q.f2 = prevF1;
+            }
+        }
+    }
+
     const progress = ((quizState.currentIndex) / quizState.length) * 100;
     
     document.getElementById('quiz-progress-text').innerText = `Pregunta ${quizState.currentIndex + 1} de ${quizState.length}`;
