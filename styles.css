@@ -43,3 +43,28 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #64748b; 
 }
+
+/* Cursor parpadeante para el input numérico */
+.blinking-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 2rem;
+    background-color: #38bdf8;
+    margin-left: 4px;
+    animation: blink 1s step-start infinite;
+    vertical-align: middle;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+/* Pulsación rápida para el teclado numérico en pantalla */
+.numpad-btn {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+.numpad-btn:active {
+    transform: scale(0.92);
+}

@@ -74,10 +74,46 @@
                     </div>
                 </div>
 
+                <!-- Tipo de Preguntas (Normal vs Solo Fallos) -->
+                <div class="mb-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                        <h3 class="text-xl font-bold text-slate-200 flex items-center gap-2">
+                            <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">2</span>
+                            Tipo de preguntas
+                        </h3>
+                        <span id="quiz-errors-counter-badge" class="text-xs bg-slate-700 text-slate-400 border border-slate-600 px-3 py-1 rounded-full font-bold">
+                            0 fallos disponibles
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="quiz-pool" value="all" checked onchange="handlePoolTypeChange()" class="peer sr-only">
+                            <div class="p-4 bg-slate-700/50 border-2 border-slate-600 rounded-2xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-left transition-all hover:bg-slate-700">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-2xl">📚</span>
+                                    <span class="font-display text-lg text-slate-200 peer-checked:text-blue-400">Todas las Combinaciones</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Práctica completa y balanceada de las tablas seleccionadas.</p>
+                            </div>
+                        </label>
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="quiz-pool" value="errors" onchange="handlePoolTypeChange()" class="peer sr-only">
+                            <div class="p-4 bg-slate-700/50 border-2 border-slate-600 rounded-2xl peer-checked:border-red-500 peer-checked:bg-red-950/40 text-left transition-all hover:bg-slate-700" id="quiz-pool-errors-card">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-2xl">🎯</span>
+                                    <span class="font-display text-lg text-slate-200 peer-checked:text-red-400">Solo Fallos Frecuentes</span>
+                                    <span class="text-xs bg-red-900/40 text-red-300 px-2 py-0.5 rounded-full border border-red-700/50 font-bold ml-auto">Foco</span>
+                                </div>
+                                <p class="text-xs text-slate-400" id="quiz-pool-errors-desc">Juega exclusivamente con las multiplicaciones que más has fallado.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Longitud del Quiz -->
                 <div class="mb-8">
                     <h3 class="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2">
-                        <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">2</span>
+                        <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">3</span>
                         Cantidad de preguntas
                     </h3>
                     <div class="flex flex-wrap gap-4">
@@ -92,6 +128,37 @@
                         <label class="flex-1 sm:flex-none relative cursor-pointer">
                             <input type="radio" name="quiz-length" value="30" class="peer sr-only">
                             <div class="px-6 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-center font-bold text-slate-400 peer-checked:text-blue-400 transition-all hover:bg-slate-700 text-lg">30</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Modo de Juego -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2">
+                        <span class="bg-blue-900/50 text-blue-400 border border-blue-700/50 w-8 h-8 rounded-full flex items-center justify-center">4</span>
+                        Modo de juego
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="quiz-mode" value="input" checked class="peer sr-only">
+                            <div class="p-4 bg-slate-700/50 border-2 border-slate-600 rounded-2xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-left transition-all hover:bg-slate-700">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-2xl">⌨️</span>
+                                    <span class="font-display text-lg text-slate-200 peer-checked:text-blue-400">Escribir Respuesta</span>
+                                    <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold ml-auto">Nuevo</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Escribe el resultado sin alternativas para evitar adivinar. ¡Mide tu tiempo y velocidad!</p>
+                            </div>
+                        </label>
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="quiz-mode" value="options" class="peer sr-only">
+                            <div class="p-4 bg-slate-700/50 border-2 border-slate-600 rounded-2xl peer-checked:border-blue-500 peer-checked:bg-blue-900/30 text-left transition-all hover:bg-slate-700">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-2xl">🔘</span>
+                                    <span class="font-display text-lg text-slate-200 peer-checked:text-blue-400">4 Opciones</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Elige entre 4 alternativas generadas automáticamente.</p>
+                            </div>
                         </label>
                     </div>
                 </div>
@@ -116,22 +183,62 @@
                         <button onclick="navTo('quiz-config')" class="p-2 text-slate-500 hover:bg-red-900/30 hover:text-red-400 rounded-full transition-colors" title="Abandonar Quiz">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
-                        <div class="bg-blue-900/40 text-blue-300 border border-blue-800/50 px-4 py-1 rounded-full font-bold text-sm" id="quiz-progress-text">Pregunta 1 de 10</div>
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="bg-amber-900/40 text-amber-300 border border-amber-800/50 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1.5 shadow-sm font-display">
+                                <span>⏱️</span> <span id="quiz-timer-text">0.0s</span>
+                            </div>
+                            <div class="bg-blue-900/40 text-blue-300 border border-blue-800/50 px-3.5 py-1 rounded-full font-bold text-sm" id="quiz-progress-text">Pregunta 1 de 10</div>
+                        </div>
                     </div>
                     
-                    <div class="w-full bg-slate-700 rounded-full h-4 mb-10 overflow-hidden shadow-inner">
+                    <div class="w-full bg-slate-700 rounded-full h-4 mb-8 overflow-hidden shadow-inner">
                         <div id="quiz-progress-bar" class="bg-gradient-to-r from-blue-500 to-blue-400 h-4 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]" style="width: 10%"></div>
                     </div>
 
-                    <div class="text-center mb-12">
+                    <div class="text-center mb-8">
                         <h2 class="text-6xl sm:text-8xl font-display text-slate-100 drop-shadow-lg" id="quiz-question">7 × 8 = ?</h2>
                     </div>
 
+                    <!-- Modo 1: Múltiples Opciones -->
                     <div class="grid grid-cols-2 gap-4 sm:gap-6" id="quiz-options">
                         <!-- Opciones generadas dinámicamente -->
                     </div>
 
-                    <div id="quiz-feedback" class="mt-8 text-center text-2xl font-display h-10 opacity-0 transition-opacity duration-200 flex items-center justify-center">
+                    <!-- Modo 2: Entrada Directa con Teclado Numérico -->
+                    <div id="quiz-input-container" class="hidden">
+                        <!-- Display de respuesta tipeada -->
+                        <div class="flex justify-center mb-5">
+                            <div id="quiz-input-display-box" class="w-full max-w-xs bg-slate-900/90 border-2 border-blue-500/60 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-blue-300 flex items-center justify-center min-h-[72px] shadow-inner tracking-wider">
+                                <span id="quiz-input-value"></span><span class="blinking-cursor"></span>
+                            </div>
+                        </div>
+
+                        <!-- Teclado en pantalla -->
+                        <div class="max-w-xs mx-auto grid grid-cols-3 gap-2 sm:gap-2.5" id="quiz-numpad">
+                            <button type="button" onclick="numpadPress('1')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">1</button>
+                            <button type="button" onclick="numpadPress('2')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">2</button>
+                            <button type="button" onclick="numpadPress('3')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">3</button>
+                            <button type="button" onclick="numpadPress('4')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">4</button>
+                            <button type="button" onclick="numpadPress('5')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">5</button>
+                            <button type="button" onclick="numpadPress('6')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">6</button>
+                            <button type="button" onclick="numpadPress('7')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">7</button>
+                            <button type="button" onclick="numpadPress('8')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">8</button>
+                            <button type="button" onclick="numpadPress('9')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">9</button>
+                            <button type="button" onclick="numpadPress('clear')" class="numpad-btn p-3 text-xl font-bold bg-red-900/30 hover:bg-red-800/50 text-red-300 rounded-xl border border-red-800/50 shadow-sm flex items-center justify-center" title="Borrar todo">C</button>
+                            <button type="button" onclick="numpadPress('0')" class="numpad-btn p-3 text-2xl sm:text-3xl font-display bg-slate-700/60 hover:bg-slate-600 text-slate-100 rounded-xl border border-slate-600 shadow-sm">0</button>
+                            <button type="button" onclick="numpadPress('backspace')" class="numpad-btn p-3 text-xl font-bold bg-slate-700/60 hover:bg-slate-600 text-slate-300 rounded-xl border border-slate-600 shadow-sm flex items-center justify-center" title="Borrar un dígito">⌫</button>
+                        </div>
+
+                        <!-- Botón Enviar Respuesta -->
+                        <div class="max-w-xs mx-auto mt-3">
+                            <button type="button" id="btn-submit-answer" onclick="submitInputAnswer()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-display text-xl rounded-xl transition-all btn-press shadow-md shadow-blue-900/40 flex items-center justify-center gap-2">
+                                <span>Responder</span>
+                                <span class="text-xs font-sans bg-blue-950/40 px-2 py-0.5 rounded border border-blue-400/30 opacity-80 hidden sm:inline">Enter ↵</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="quiz-feedback" class="mt-6 text-center text-2xl font-display h-10 opacity-0 transition-opacity duration-200 flex items-center justify-center">
                         <!-- Feedback visual de acierto/error -->
                     </div>
                 </div>
@@ -142,20 +249,40 @@
              VISTA 2: QUIZ (Resultados)
              ========================================== -->
         <section id="view-quiz-results" class="view-section hidden fade-in">
-            <div class="bg-slate-800 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-2xl mx-auto text-center border-t-8 border-yellow-500 border border-slate-700 relative overflow-hidden">
+            <div class="bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-12 max-w-2xl mx-auto text-center border-t-8 border-yellow-500 border border-slate-700 relative overflow-hidden">
                 <!-- Confeti simulado de fondo oscuro -->
                 <div class="absolute inset-0 pointer-events-none opacity-10" style="background-image: radial-gradient(#FCD34D 2px, transparent 2px), radial-gradient(#60A5FA 2px, transparent 2px); background-size: 30px 30px; background-position: 0 0, 15px 15px;"></div>
                 
                 <div class="relative z-10">
-                    <div id="result-icon" class="text-7xl mb-4 animate-bounce">🏆</div>
-                    <h2 id="result-message" class="text-4xl font-display mb-2 text-slate-100">¡Excelente!</h2>
+                    <div id="result-icon" class="text-7xl mb-3 animate-bounce">🏆</div>
+                    <h2 id="result-message" class="text-3xl sm:text-4xl font-display mb-1 text-slate-100">¡Excelente!</h2>
+                    <p id="result-mode-badge" class="text-sm font-bold text-slate-400 mb-6"></p>
                     
-                    <div class="inline-block bg-blue-900/30 rounded-2xl px-8 py-4 mb-8 border border-blue-800/50">
-                        <p class="text-lg text-slate-400 font-bold mb-1">Tu puntuación</p>
-                        <p class="font-display text-4xl text-blue-400"><span id="result-score">8 / 10</span></p>
+                    <!-- Tarjetas de métricas -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                        <div class="bg-blue-900/30 rounded-2xl p-4 border border-blue-800/50">
+                            <p class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">Aciertos</p>
+                            <p class="font-display text-2xl sm:text-3xl text-blue-400" id="result-score">8 / 10</p>
+                        </div>
+                        <div class="bg-amber-900/30 rounded-2xl p-4 border border-amber-800/50">
+                            <p class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">Tiempo Total</p>
+                            <p class="font-display text-2xl sm:text-3xl text-amber-400" id="result-time">00:00</p>
+                        </div>
+                        <div class="bg-teal-900/30 rounded-2xl p-4 border border-teal-800/50">
+                            <p class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">Velocidad</p>
+                            <p class="font-display text-2xl sm:text-3xl text-teal-400" id="result-avg-time">0.0s <span class="text-xs font-normal text-slate-400">/preg</span></p>
+                        </div>
+                        <div class="bg-purple-900/30 rounded-2xl p-4 border border-purple-800/50">
+                            <p class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">Puntuación</p>
+                            <p class="font-display text-2xl sm:text-3xl text-purple-400" id="result-points">0 pts</p>
+                        </div>
                     </div>
 
-                    <div class="text-left bg-slate-700/50 rounded-2xl p-6 mb-8 border border-slate-600">
+                    <div id="result-high-score-badge" class="hidden mb-6 inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-4 py-2 rounded-full font-bold text-sm">
+                        <span>⭐</span> ¡Nuevo récord personal de puntuación!
+                    </div>
+
+                    <div class="text-left bg-slate-700/50 rounded-2xl p-5 sm:p-6 mb-8 border border-slate-600">
                         <h3 class="font-bold text-slate-300 mb-4 text-lg flex items-center gap-2">
                             <span>📊</span> Desglose por tabla
                         </h3>
@@ -182,10 +309,15 @@
         <section id="view-estadisticas" class="view-section hidden">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
                 <h2 class="text-3xl sm:text-4xl font-display text-slate-200">Tus Estadísticas 📈</h2>
-                <button onclick="resetStats()" class="px-5 py-2 bg-red-900/30 text-red-400 hover:bg-red-800/50 hover:text-red-300 font-bold rounded-xl transition-colors text-sm flex items-center gap-2 border border-red-800/50 btn-press">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    Reiniciar datos
-                </button>
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <button id="btn-stats-review-all" onclick="startReviewQuizGlobal()" class="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 border border-red-500 shadow-md shadow-red-900/30 btn-press">
+                        <span>🎯</span> Repasar todos los fallos
+                    </button>
+                    <button onclick="resetStats()" class="flex-1 sm:flex-none px-4 py-2 bg-slate-800 text-red-400 hover:bg-red-900/30 hover:text-red-300 font-bold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 border border-slate-700 btn-press">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Reiniciar datos
+                    </button>
+                </div>
             </div>
 
             <div class="bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-700">
@@ -242,9 +374,14 @@
                 <!-- Errores generados dinámicamente -->
             </div>
             
-            <button onclick="closeErrorModal()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-colors btn-press">
-                Entendido
-            </button>
+            <div class="flex gap-3">
+                <button id="btn-practice-modal-errors" onclick="startReviewQuizFromModal()" class="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl transition-all btn-press shadow-md shadow-red-900/40 flex items-center justify-center gap-2">
+                    <span>🎯</span> Practicar estos fallos
+                </button>
+                <button onclick="closeErrorModal()" class="px-5 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-colors btn-press">
+                    Cerrar
+                </button>
+            </div>
         </div>
     </div>
 

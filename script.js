@@ -41,17 +41,28 @@ const TABLE_COLORS = [
 // ==========================================
 let currentView = 'estudio';
 let stats = {}; // Historial desde localStorage
+let currentModalTable = null; // Tabla abierta en el modal de errores
 
 // Estado temporal del quiz en curso
 let quizState = {
     tables: [],
     length: 10,
+    mode: 'input', // 'input' (Escribir respuesta) o 'options' (4 alternativas)
+    pool: 'all',   // 'all' (Todas) o 'errors' (Solo fallos frecuentes)
     questions: [],
     currentIndex: 0,
     score: 0,
+    errorsCount: 0,
     tableBreakdown: {},
     isActive: false,
-    waiting: false
+    waiting: false,
+    currentInputValue: '',
+    startTime: null,
+    endTime: null,
+    timerInterval: null,
+    questionStartTime: null,
+    questionTimes: [],
+    totalPoints: 0
 };
 
 // ==========================================
@@ -65,6 +76,12 @@ function init() {
 }
 
 function navTo(view) {
+    // Detener temporizador si salimos de la pantalla activa del quiz
+    if (currentView === 'quiz-active' && view !== 'quiz-active') {
+        stopTimer();
+        quizState.isActive = false;
+    }
+
     // Ocultar todas las secciones
     document.querySelectorAll('.view-section').forEach(el => {
         el.classList.add('hidden');
@@ -101,6 +118,7 @@ function navTo(view) {
         renderStats();
     } else if (view === 'quiz-config') {
         updateStartButton();
+        updateErrorPoolInfo();
     }
 
     currentView = view;
@@ -145,6 +163,8 @@ function resetStats() {
         stats = {};
         saveStats();
         renderStats();
+        updateErrorPoolInfo();
+        updateStartButton();
     }
 }
 
@@ -244,9 +264,64 @@ function renderQuizCheckboxes() {
     }
 }
 
+// ==========================================
+// GESTIÓN DEL BANCO DE FALLOS
+// ==========================================
+function getErrorsForTables(tables) {
+    let list = [];
+    if (!tables || tables.length === 0) return list;
+
+    tables.forEach(t => {
+        if (stats[t]) {
+            for (let m in stats[t]) {
+                const errs = stats[t][m].errores || 0;
+                if (errs > 0) {
+                    list.push({
+                        a: t,
+                        b: parseInt(m, 10),
+                        errors: errs,
+                        correct: stats[t][m].aciertos || 0
+                    });
+                }
+            }
+        }
+    });
+
+    // Ordenar de mayor a menor cantidad de errores
+    list.sort((x, y) => y.errors - x.errors);
+    return list;
+}
+
+function updateErrorPoolInfo() {
+    const checkboxes = document.querySelectorAll('.quiz-checkbox:checked');
+    const selectedTables = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const errors = getErrorsForTables(selectedTables);
+    const counterBadge = document.getElementById('quiz-errors-counter-badge');
+    const errorsDesc = document.getElementById('quiz-pool-errors-desc');
+
+    if (counterBadge) {
+        if (errors.length === 0) {
+            counterBadge.className = 'text-xs bg-slate-700 text-slate-400 border border-slate-600 px-3 py-1 rounded-full font-bold';
+            counterBadge.innerText = '0 fallos disponibles';
+            if (errorsDesc) errorsDesc.innerText = 'Sin fallos registrados en las tablas seleccionadas. ¡Buen trabajo!';
+        } else {
+            counterBadge.className = 'text-xs bg-red-950/70 text-red-300 border border-red-700/60 px-3 py-1 rounded-full font-bold';
+            counterBadge.innerText = `${errors.length} ${errors.length === 1 ? 'fallo disponible' : 'fallos disponibles'}`;
+            if (errorsDesc) errorsDesc.innerText = `Juega exclusivamente con las ${errors.length} multiplicaciones en las que has fallado.`;
+        }
+    }
+
+    return errors;
+}
+
+function handlePoolTypeChange() {
+    updateStartButton();
+}
+
 function updateStartButton() {
     const checkboxes = document.querySelectorAll('.quiz-checkbox');
     let selectedCount = 0;
+    const selectedTables = [];
     
     checkboxes.forEach(cb => {
         const label = cb.closest('.checkbox-label');
@@ -255,6 +330,7 @@ function updateStartButton() {
         
         if (cb.checked) {
             selectedCount++;
+            selectedTables.push(num);
             label.classList.remove('bg-slate-800', 'border-slate-700');
             // In dark mode we use the bg string and a border match
             label.className = `flex flex-col items-center justify-center py-4 px-2 border-2 rounded-2xl cursor-pointer transition-all checkbox-label ${color.bg} ${color.border} shadow-sm`;
@@ -269,11 +345,25 @@ function updateStartButton() {
         }
     });
 
+    const errors = updateErrorPoolInfo();
+    const poolRadio = document.querySelector('input[name="quiz-pool"]:checked');
+    const poolType = poolRadio ? poolRadio.value : 'all';
     const btn = document.getElementById('btn-start-quiz');
-    if (selectedCount > 0) {
-        btn.removeAttribute('disabled');
-    } else {
+
+    if (selectedCount === 0) {
         btn.setAttribute('disabled', 'true');
+        btn.innerText = '¡Empezar a Jugar!';
+    } else if (poolType === 'errors') {
+        if (errors.length === 0) {
+            btn.setAttribute('disabled', 'true');
+            btn.innerText = 'Sin fallos en estas tablas';
+        } else {
+            btn.removeAttribute('disabled');
+            btn.innerText = `¡Repasar ${errors.length} ${errors.length === 1 ? 'Fallo' : 'Fallos'}!`;
+        }
+    } else {
+        btn.removeAttribute('disabled');
+        btn.innerText = '¡Empezar a Jugar!';
     }
 }
 
@@ -315,6 +405,83 @@ function selectSmartTables() {
     updateStartButton();
 }
 
+
+// ==========================================
+// CONTROL DEL CRONÓMETRO
+// ==========================================
+function startTimer() {
+    stopTimer();
+    quizState.startTime = performance.now();
+    quizState.questionStartTime = performance.now();
+    updateTimerText(0);
+
+    quizState.timerInterval = setInterval(() => {
+        if (!quizState.isActive || !quizState.startTime) return;
+        const elapsedSec = (performance.now() - quizState.startTime) / 1000;
+        updateTimerText(elapsedSec);
+    }, 100);
+}
+
+function stopTimer() {
+    if (quizState.timerInterval) {
+        clearInterval(quizState.timerInterval);
+        quizState.timerInterval = null;
+    }
+}
+
+function formatTime(seconds) {
+    if (seconds < 60) {
+        return `${seconds.toFixed(1)}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+}
+
+function updateTimerText(elapsedSec) {
+    const el = document.getElementById('quiz-timer-text');
+    if (el) el.innerText = formatTime(elapsedSec);
+}
+
+// ==========================================
+// CONTROL DE ENTRADA DIRECTA (NUMPAD & TECLADO)
+// ==========================================
+function numpadPress(key) {
+    if (!quizState.isActive || quizState.waiting || quizState.mode !== 'input') return;
+
+    if (key === 'clear') {
+        quizState.currentInputValue = '';
+    } else if (key === 'backspace') {
+        quizState.currentInputValue = quizState.currentInputValue.slice(0, -1);
+    } else if (/^[0-9]$/.test(key)) {
+        if (quizState.currentInputValue.length < 4) {
+            quizState.currentInputValue += key;
+        }
+    }
+    updateInputDisplay();
+}
+
+function updateInputDisplay() {
+    const valEl = document.getElementById('quiz-input-value');
+    if (valEl) {
+        valEl.innerText = quizState.currentInputValue;
+    }
+}
+
+function submitInputAnswer() {
+    if (!quizState.isActive || quizState.waiting || quizState.mode !== 'input') return;
+
+    if (quizState.currentInputValue.trim() === '') {
+        const box = document.getElementById('quiz-input-display-box');
+        box.classList.add('border-amber-400');
+        setTimeout(() => box.classList.remove('border-amber-400'), 300);
+        return;
+    }
+
+    const answerNum = parseInt(quizState.currentInputValue, 10);
+    processAnswer(answerNum);
+}
+
 // ==========================================
 // LÓGICA VISTA 2: EJECUCIÓN DEL QUIZ
 // ==========================================
@@ -323,24 +490,78 @@ function startQuiz() {
     quizState.tables = Array.from(checkboxes).map(cb => parseInt(cb.value));
     
     const lengthRadio = document.querySelector('input[name="quiz-length"]:checked');
-    quizState.length = parseInt(lengthRadio.value);
+    quizState.length = parseInt(lengthRadio ? lengthRadio.value : 10);
+
+    const modeRadio = document.querySelector('input[name="quiz-mode"]:checked');
+    quizState.mode = modeRadio ? modeRadio.value : 'input';
+
+    const poolRadio = document.querySelector('input[name="quiz-pool"]:checked');
+    quizState.pool = poolRadio ? poolRadio.value : 'all';
     
-    quizState.questions = generateQuestions(quizState.tables, quizState.length);
+    quizState.questions = generateQuestions(quizState.tables, quizState.length, quizState.pool === 'errors');
+
+    if (quizState.questions.length === 0) {
+        alert("No hay operaciones disponibles para la configuración seleccionada.");
+        return;
+    }
+
     quizState.currentIndex = 0;
     quizState.score = 0;
+    quizState.errorsCount = 0;
+    quizState.totalPoints = 0;
+    quizState.questionTimes = [];
+    quizState.currentInputValue = '';
     quizState.tableBreakdown = {};
     quizState.tables.forEach(t => quizState.tableBreakdown[t] = { q: 0, c: 0 });
     quizState.isActive = true;
     quizState.waiting = false;
 
+    // Configurar visibilidad según el modo de juego
+    const optionsContainer = document.getElementById('quiz-options');
+    const inputContainer = document.getElementById('quiz-input-container');
+    if (quizState.mode === 'input') {
+        optionsContainer.classList.add('hidden');
+        inputContainer.classList.remove('hidden');
+    } else {
+        optionsContainer.classList.remove('hidden');
+        inputContainer.classList.add('hidden');
+    }
+
     navTo('quiz-active');
+    startTimer();
     renderQuestion();
 }
 
-function generateQuestions(tables, count) {
+function generateQuestions(tables, count, onlyErrors = false) {
     let questions = [];
+
+    // MODO SOLO FALLOS FRECUENTES
+    if (onlyErrors) {
+        const errorList = getErrorsForTables(tables);
+        if (errorList.length === 0) return [];
+
+        for (let i = 0; i < count; i++) {
+            // Ciclar las combinaciones con fallos (las de mayor error salen primero)
+            const item = errorList[i % errorList.length];
+            const correctResult = item.a * item.b;
+            questions.push({
+                a: item.a,
+                b: item.b,
+                options: generateOptions(correctResult)
+            });
+        }
+
+        // Mezclar aleatoriamente las preguntas generadas para dinamismo
+        for (let i = questions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [questions[i], questions[j]] = [questions[j], questions[i]];
+        }
+
+        return questions;
+    }
+
+    // MODO NORMAL (Ponderado con probabilidad de repetición de fallos)
     let pool = [];
-    
     tables.forEach(t => {
         if (t === 1 || t === 10) return; // Por seguridad, omitir tabla del 1 y del 10
         
@@ -384,6 +605,7 @@ function generateQuestions(tables, count) {
 
     return questions;
 }
+
 
 function generateOptions(correctAnswer) {
     let options = new Set([correctAnswer]);
@@ -434,23 +656,42 @@ function renderQuestion() {
     void questionEl.offsetWidth;
     questionEl.classList.add('fade-in');
 
-    const optionsContainer = document.getElementById('quiz-options');
-    optionsContainer.innerHTML = '';
-    
-    q.options.forEach((opt) => {
-        const btn = document.createElement('button');
-        btn.className = 'quiz-option-btn p-5 sm:p-8 text-4xl sm:text-5xl font-display bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl border-4 border-slate-700 hover:border-blue-500/50 transition-all btn-press shadow-md flex items-center justify-center';
-        btn.innerText = opt;
-        btn.onclick = () => handleAnswer(opt, btn);
-        optionsContainer.appendChild(btn);
-    });
-
     const feedback = document.getElementById('quiz-feedback');
     feedback.style.opacity = '0';
+
+    // Configurar vista según modo
+    if (quizState.mode === 'options') {
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = '';
+        
+        q.options.forEach((opt) => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option-btn p-5 sm:p-8 text-4xl sm:text-5xl font-display bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl border-4 border-slate-700 hover:border-blue-500/50 transition-all btn-press shadow-md flex items-center justify-center';
+            btn.innerText = opt;
+            btn.onclick = () => handleAnswer(opt, btn);
+            optionsContainer.appendChild(btn);
+        });
+    } else {
+        // Modo Entrada Directa
+        quizState.currentInputValue = '';
+        updateInputDisplay();
+
+        const box = document.getElementById('quiz-input-display-box');
+        box.className = 'w-full max-w-xs bg-slate-900/90 border-2 border-blue-500/60 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-blue-300 flex items-center justify-center min-h-[72px] shadow-inner tracking-wider transition-colors';
+
+        const submitBtn = document.getElementById('btn-submit-answer');
+        if (submitBtn) submitBtn.removeAttribute('disabled');
+    }
+
+    quizState.questionStartTime = performance.now();
 }
 
 function handleAnswer(selectedAnswer, btnElement) {
-    if (quizState.waiting) return; 
+    processAnswer(selectedAnswer, btnElement);
+}
+
+function processAnswer(selectedAnswer, btnElement = null) {
+    if (quizState.waiting || !quizState.isActive) return; 
     quizState.waiting = true;
 
     const q = quizState.questions[quizState.currentIndex];
@@ -458,56 +699,90 @@ function handleAnswer(selectedAnswer, btnElement) {
     const isCorrect = (selectedAnswer === correctAnswer);
     const feedback = document.getElementById('quiz-feedback');
     
+    // Medir tiempo de esta pregunta
+    const now = performance.now();
+    const qTime = Math.max(0.1, (now - (quizState.questionStartTime || now)) / 1000);
+    quizState.questionTimes.push(qTime);
+
     updateStat(q.a, q.b, isCorrect);
     quizState.tableBreakdown[q.a].q++;
 
-    const allBtns = document.querySelectorAll('.quiz-option-btn');
-    allBtns.forEach(b => {
-        b.disabled = true;
-        b.classList.remove('hover:bg-slate-700', 'hover:border-blue-500/50', 'btn-press');
-        b.classList.add('cursor-default', 'opacity-60');
-    });
+    if (quizState.mode === 'options') {
+        const allBtns = document.querySelectorAll('.quiz-option-btn');
+        allBtns.forEach(b => {
+            b.disabled = true;
+            b.classList.remove('hover:bg-slate-700', 'hover:border-blue-500/50', 'btn-press');
+            b.classList.add('cursor-default', 'opacity-60');
+        });
+    } else {
+        const submitBtn = document.getElementById('btn-submit-answer');
+        if (submitBtn) submitBtn.setAttribute('disabled', 'true');
+    }
 
     if (isCorrect) {
         quizState.score++;
         quizState.tableBreakdown[q.a].c++;
+
+        // Bono de velocidad: tiempo base objetivo de 5 segundos
+        // Si se responde en menos de 5s, se gana bonificación proporcional (hasta 600 pts extra)
+        const speedBonus = Math.round(Math.max(0, (5.0 - qTime) * 150));
+        const earnedPoints = 1000 + speedBonus;
+        quizState.totalPoints += earnedPoints;
+
+        if (quizState.mode === 'options' && btnElement) {
+            btnElement.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
+            btnElement.classList.add('bg-green-600', 'border-green-500', 'text-white', 'scale-105', 'shadow-lg', 'opacity-100');
+        } else if (quizState.mode === 'input') {
+            const box = document.getElementById('quiz-input-display-box');
+            box.className = 'w-full max-w-xs bg-green-950/50 border-2 border-green-500 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-green-300 flex items-center justify-center min-h-[72px] shadow-lg tracking-wider transition-all scale-105';
+        }
         
-        btnElement.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
-        btnElement.classList.add('bg-green-600', 'border-green-500', 'text-white', 'scale-105', 'shadow-lg', 'opacity-100');
-        
-        feedback.innerHTML = '<span class="text-green-400 bg-green-900/30 border border-green-800/50 px-4 py-2 rounded-full">✓ ¡Correcto!</span>';
+        feedback.innerHTML = `<span class="text-green-400 bg-green-900/30 border border-green-800/50 px-4 py-1.5 rounded-full text-lg sm:text-xl">✓ ¡Correcto! +${earnedPoints.toLocaleString()} pts (${qTime.toFixed(1)}s)</span>`;
         feedback.style.opacity = '1';
         
         setTimeout(() => {
             quizState.currentIndex++;
             quizState.waiting = false;
             renderQuestion();
-        }, 800);
+        }, 750);
 
     } else {
-        btnElement.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
-        btnElement.classList.add('bg-red-600', 'border-red-500', 'text-white', 'scale-95', 'opacity-100');
-        
-        allBtns.forEach(b => {
-            if (parseInt(b.innerText) === correctAnswer) {
-                b.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
-                b.classList.add('bg-green-600', 'border-green-500', 'text-white', 'scale-105', 'shadow-md', 'opacity-100');
-            }
-        });
+        quizState.errorsCount++;
+        // Penalización de puntuación
+        quizState.totalPoints = Math.max(0, quizState.totalPoints - 250);
 
-        feedback.innerHTML = `<span class="text-red-400 bg-red-900/30 border border-red-800/50 px-4 py-2 rounded-full">✗ Era ${correctAnswer}</span>`;
+        if (quizState.mode === 'options') {
+            if (btnElement) {
+                btnElement.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
+                btnElement.classList.add('bg-red-600', 'border-red-500', 'text-white', 'scale-95', 'opacity-100');
+            }
+            const allBtns = document.querySelectorAll('.quiz-option-btn');
+            allBtns.forEach(b => {
+                if (parseInt(b.innerText) === correctAnswer) {
+                    b.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200', 'opacity-60');
+                    b.classList.add('bg-green-600', 'border-green-500', 'text-white', 'scale-105', 'shadow-md', 'opacity-100');
+                }
+            });
+        } else if (quizState.mode === 'input') {
+            const box = document.getElementById('quiz-input-display-box');
+            box.className = 'w-full max-w-xs bg-red-950/50 border-2 border-red-500 rounded-2xl py-3 px-6 text-center text-4xl sm:text-5xl font-display text-red-300 flex items-center justify-center min-h-[72px] shadow-lg tracking-wider transition-all scale-95';
+        }
+
+        feedback.innerHTML = `<span class="text-red-400 bg-red-900/30 border border-red-800/50 px-4 py-1.5 rounded-full text-lg sm:text-xl">✗ Era ${correctAnswer}</span>`;
         feedback.style.opacity = '1';
 
         setTimeout(() => {
             quizState.currentIndex++;
             quizState.waiting = false;
             renderQuestion();
-        }, 1200);
+        }, 1250);
     }
 }
 
 function finishQuiz() {
     quizState.isActive = false;
+    stopTimer();
+    quizState.endTime = performance.now();
     document.getElementById('quiz-progress-bar').style.width = `100%`;
     
     setTimeout(() => {
@@ -524,17 +799,53 @@ function renderResults() {
     const total = quizState.length;
     const pct = Math.round((score / total) * 100);
     
+    // Cálculo de tiempos
+    const totalSec = Math.max(0.1, ((quizState.endTime || performance.now()) - quizState.startTime) / 1000);
+    const avgSec = quizState.questionTimes.length > 0 
+        ? (quizState.questionTimes.reduce((a, b) => a + b, 0) / quizState.questionTimes.length)
+        : (totalSec / total);
+
+    // Actualizar métricas
     document.getElementById('result-score').innerText = `${score} / ${total}`;
-    
+    document.getElementById('result-time').innerText = formatTime(totalSec);
+    document.getElementById('result-avg-time').innerHTML = `${avgSec.toFixed(1)}s <span class="text-xs font-normal text-slate-400">/preg</span>`;
+    document.getElementById('result-points').innerText = `${quizState.totalPoints.toLocaleString()} pts`;
+
+    // Etiqueta del modo jugado
+    const modeBadge = document.getElementById('result-mode-badge');
+    if (modeBadge) {
+        const modeText = quizState.mode === 'input' 
+            ? 'Escribir Respuesta (Entrada Directa)' 
+            : '4 Múltiples Opciones';
+        const poolText = quizState.pool === 'errors'
+            ? '🎯 Repaso de Fallos'
+            : '📚 Banco Completo';
+        modeBadge.innerText = `${poolText} • ${modeText}`;
+    }
+
+    // Comprobar y guardar récord personal
+    const recordKey = `multiplicar_best_score_${quizState.mode}_${total}`;
+    const previousBest = parseInt(localStorage.getItem(recordKey) || '0', 10);
+    const highScoreBadge = document.getElementById('result-high-score-badge');
+
+    if (quizState.totalPoints > previousBest && quizState.totalPoints > 0) {
+        localStorage.setItem(recordKey, quizState.totalPoints.toString());
+        if (highScoreBadge) highScoreBadge.classList.remove('hidden');
+    } else {
+        if (highScoreBadge) highScoreBadge.classList.add('hidden');
+    }
+
     let icon = '🏆';
     let msg = '';
     
-    if (pct === 100) {
-        icon = '🌟'; msg = '¡Perfecto!';
+    if (pct === 100 && avgSec < 2.5) {
+        icon = '⚡'; msg = '¡Velocidad Relámpago!';
+    } else if (pct === 100) {
+        icon = '🌟'; msg = '¡Puntaje Perfecto!';
     } else if (pct >= 80) {
-        icon = '🎖️'; msg = '¡Excelente!';
+        icon = '🎖️'; msg = '¡Excelente trabajo!';
     } else if (pct >= 50) {
-        icon = '👍'; msg = '¡Buen trabajo!';
+        icon = '👍'; msg = '¡Buen desempeño!';
     } else {
         icon = '💪'; msg = '¡Sigue practicando!';
     }
@@ -646,10 +957,12 @@ function renderStats() {
 // CONTROL DEL MODAL DE ERRORES
 // ==========================================
 function openErrorModal(tableNum) {
+    currentModalTable = tableNum;
     const modal = document.getElementById('error-modal');
     const card = document.getElementById('error-modal-card');
     const title = document.getElementById('error-modal-title');
     const list = document.getElementById('error-modal-list');
+    const practiceBtn = document.getElementById('btn-practice-modal-errors');
     
     title.innerText = `Errores registrados en la Tabla del ${tableNum}`;
     list.innerHTML = '';
@@ -669,6 +982,7 @@ function openErrorModal(tableNum) {
     errorsList.sort((a, b) => b.count - a.count);
     
     if (errorsList.length === 0) {
+        if (practiceBtn) practiceBtn.classList.add('hidden');
         list.innerHTML = `
             <div class="text-center py-6 text-slate-500">
                 <span class="text-4xl block mb-2">🎉</span>
@@ -677,6 +991,10 @@ function openErrorModal(tableNum) {
             </div>
         `;
     } else {
+        if (practiceBtn) {
+            practiceBtn.classList.remove('hidden');
+            practiceBtn.innerHTML = `<span>🎯</span> Practicar ${errorsList.length} ${errorsList.length === 1 ? 'fallo' : 'fallos'}`;
+        }
         errorsList.forEach(item => {
             const div = document.createElement('div');
             div.className = 'flex justify-between items-center py-3 bg-slate-900/40 px-4 rounded-xl border border-slate-700/50 shadow-sm';
@@ -717,6 +1035,81 @@ function closeErrorModal() {
         modal.classList.add('hidden');
     }, 300);
 }
+
+// ==========================================
+// LANZADORES RÁPIDOS DE REPASO DE FALLOS
+// ==========================================
+function startReviewQuizGlobal() {
+    const allTables = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const allErrors = getErrorsForTables(allTables);
+
+    if (allErrors.length === 0) {
+        alert("¡Excelente! No tienes ningún fallo registrado en tu historial. ¡Sigue practicando en el modo normal!");
+        return;
+    }
+
+    // Identificar las tablas que tienen errores
+    const tablesWithErrors = [...new Set(allErrors.map(e => e.a))];
+
+    // Marcar esas tablas en los checkboxes
+    document.querySelectorAll('.quiz-checkbox').forEach(cb => {
+        cb.checked = tablesWithErrors.includes(parseInt(cb.value));
+    });
+
+    // Seleccionar radio 'errors'
+    const errorsRadio = document.querySelector('input[name="quiz-pool"][value="errors"]');
+    if (errorsRadio) errorsRadio.checked = true;
+
+    // Actualizar estados e iniciar
+    updateStartButton();
+    startQuiz();
+}
+
+function startReviewQuizFromModal() {
+    if (!currentModalTable) return;
+    const tableErrors = getErrorsForTables([currentModalTable]);
+
+    if (tableErrors.length === 0) {
+        alert("Esta tabla no tiene errores registrados.");
+        return;
+    }
+
+    closeErrorModal();
+
+    // Marcar solo esta tabla en los checkboxes
+    document.querySelectorAll('.quiz-checkbox').forEach(cb => {
+        cb.checked = (parseInt(cb.value) === currentModalTable);
+    });
+
+    // Seleccionar radio 'errors'
+    const errorsRadio = document.querySelector('input[name="quiz-pool"][value="errors"]');
+    if (errorsRadio) errorsRadio.checked = true;
+
+    updateStartButton();
+    startQuiz();
+}
+
+
+// ==========================================
+// CAPTURA DE TECLADO FÍSICO (DESKTOP & TABLET)
+// ==========================================
+window.addEventListener('keydown', (e) => {
+    if (!quizState.isActive || quizState.mode !== 'input' || currentView !== 'quiz-active') return;
+
+    if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        numpadPress(e.key);
+    } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        numpadPress('backspace');
+    } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        numpadPress('clear');
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        submitInputAnswer();
+    }
+});
 
 // ==========================================
 // ARRANQUE
